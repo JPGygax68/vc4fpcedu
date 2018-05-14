@@ -51,11 +51,13 @@ unit BCM2837;
                                
 interface
 
-uses GlobalConfig,GlobalConst,GlobalTypes;
+{$ifdef ultibo}uses GlobalConfig,GlobalConst,GlobalTypes;{$endif}
               
 {==============================================================================}
 {Global definitions}
+{$ifdef ultibo}
 {$INCLUDE GlobalDefines.inc}
+{$endif}
  
 {==============================================================================}
 const
@@ -73,7 +75,7 @@ const
  
  {Physical memory addresses of BCM2837 peripherals  (See: BCM2835-ARM-Peripherals.pdf)}
  BCM2837_PERIPHERALS_BASE = $3F000000;  {Mapped to VC address 7E000000}
- BCM2837_PERIPHERALS_SIZE = SIZE_16M;
+ BCM2837_PERIPHERALS_SIZE = (16*1024*1024);
  
  {Interrupt Controller 0}
  BCM2837_IC0_REGS_BASE          = BCM2837_PERIPHERALS_BASE + $2000;
@@ -1514,7 +1516,7 @@ const
 const
  {BCM2837 ARM local constants (See: QA7 Rev3.4.pdf)}
  BCM2837_ARM_LOCAL_BASE  =  $40000000;
- BCM2837_ARM_LOCAL_SIZE  =  SIZE_256K;
+ BCM2837_ARM_LOCAL_SIZE  =  (256 * 1024);
  
  {Physical memory addresses of BCM2837 ARM local peripherals  (See: QA7 Rev3.4.pdf)}
  BCM2837_ARM_LOCAL_REGS_BASE     =  (BCM2837_ARM_LOCAL_BASE + $0000);

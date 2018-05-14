@@ -238,6 +238,8 @@ const
 {==============================================================================}
 {Note: The order of these is extremely important}
 
+{$ifdef ultibo
+}
 {VC4 Client libraries}
 {$linklib libilclient}
 {--$linklib libvgfont} //To Do //Continuing //Not compiling yet
@@ -297,6 +299,8 @@ const
 {$linklib libbrcmWFC}
  
 {$linklib libopenmaxil}
+
+{$endif} // ultibo
 
 {VC4 core libraries} 
 {$linklib libbcm_host}
@@ -836,6 +840,7 @@ type
 
 {$PACKRECORDS DEFAULT}
 {==============================================================================}
+{$ifdef ultibo}
 {Initialization Functions}
 procedure VC4Init;
 
@@ -1034,10 +1039,13 @@ function vc4_bcm_host_get_peripheral_address: cunsigned; cdecl; public name 'vc4
 function vc4_bcm_host_get_peripheral_size: cunsigned; cdecl; public name 'vc4_bcm_host_get_peripheral_size';
 function vc4_bcm_host_get_sdram_address: cunsigned; cdecl; public name 'vc4_bcm_host_get_sdram_address';
 
+{$endif} // ultibo
 {==============================================================================}
 {==============================================================================}
 
 implementation
+
+{$ifdef ultibo}
 
 uses {$IFDEF CPUARMV6}BCM2835{$ELSE}BCM2837{$ENDIF};
 
@@ -2341,6 +2349,8 @@ finalization
 
 {==============================================================================}
 {==============================================================================}
+
+{$endif} // ultibo
 
 end.
 
