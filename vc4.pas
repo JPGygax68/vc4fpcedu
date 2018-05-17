@@ -935,6 +935,8 @@ procedure VCSMExit; cdecl; external libvcsm name 'vcsm_exit';
 //Integer vcsm_clean_invalid( struct vcsm_user_clean_invalid_s *s );
 //Plus extras //vcsm_clean_invalid2 etc
 
+{$endif} // ultibo
+
 {==============================================================================}
 {VC4 BCMHost Interface Functions (From \opt\vc\include\bcm_host.h)}
 procedure BCMHostInit; cdecl; external libbcm_host name 'bcm_host_init';
@@ -947,6 +949,7 @@ function BCMHostGetSdramAddress: cunsigned; cdecl; external libbcm_host name 'bc
 function BCMHostGraphicsGetDisplaySize(display_number: UInt16; var width,height: UInt32): Int32; cdecl; external libbcm_host name 'graphics_get_display_size';
 
 {==============================================================================}
+{$ifdef ultibo}
 {VC4 MMAL Interface Functions (From \opt\vc\include\interface\mmal\*)}
 //To Do //Move to separate MMAL unit
 

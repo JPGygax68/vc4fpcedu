@@ -1,0 +1,8 @@
+2018-05-16
+==========
+
+- Made test program link again by adding ```
+  {$ifdef unix}
+  cthreads, cmem,
+  {$endif}
+  ```
