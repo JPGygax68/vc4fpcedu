@@ -11,57 +11,20 @@ uses
 
 type
   
+  {$ifdef OLD_CODE}
   DISPMANX_STATE_T = record
     screen_width, screen_height: UInt32;
-    dispman_display: DISPMANX_DISPLAY_HANDLE_T;
+    dispman_display: DISPMANX_DISPLAY_HANDLE_T;    
   end;
-
-procedure InitDispmanX(var state: DISPMANX_STATE_T);
-var
-  dispman_element: DISPMANX_ELEMENT_HANDLE_T;
-  dispman_update: DISPMANX_UPDATE_HANDLE_T;
-  success: Int32;
-  src_rect, dst_rect: VC_RECT_T;
-begin
-
-  Write('Initializing BCM host...');
-  BCMHostInit;
-  WriteLn('done.');
-
-  Write('Obtaining LCD display size...');
-  success := BCMHostGraphicsGetDisplaySize(0 {LCD}, state.screen_width, state.screen_height);
-  if success < 0 then raise Exception.Create('Failed to obtain LCD display size');
-  WriteLn(state.screen_width, 'x', state.screen_height);
-
-  dst_rect.x := 0;
-  dst_rect.y := 0;
-  dst_rect.width  := state.screen_width;
-  dst_rect.height := state.screen_height;
-
-  src_rect.x := 0;
-  src_rect.y := 0;
-  src_rect.width  := state.screen_width  shl 16;
-  src_rect.height := state.screen_height shl 16;
-
-  Write('Adding Dispman element...');
-  dispman_update := vc_dispmanx_update_start(0);
-  if dispman_update = 0 then raise Exception.Create('Failed to obtain update handle');
-  dispman_element := vc_dispmanx_element_add(dispman_update, state.dispman_display, 
-    0 {layer}, @src_rect, 0 {source}, @dst_rect, DISPMANX_PROTECTION_NONE, 
-    nil {alpha}, nil {clamp}, 0 {transform});
-  if dispman_element = 0 then raise Exception.Create('Failed to add Dispman element');
-  WriteLn('done.');
-
-end;
-
-type
+  {$endif}
 
   EGL_STATE_T = record
-    screen_width, screen_height: UInt32;
     display: EGLDisplay;
     surface: EGLSurface;
     context: EGLContext;
     config : EGLConfig;
+    native_window: EGL_DISPMANX_WINDOW_T;
+    dispman_display: DISPMANX_DISPLAY_HANDLE_T;
   end;
 
 procedure InitEGL(var state: EGL_STATE_T);
@@ -81,8 +44,7 @@ const
 var
   Res: EGLboolean;
   num_configs: EGLint;
-  configs: array of EGLConfig;
-  //i: Integer;
+  //configs: array of EGLConfig;
 begin
   WriteLn('Obtaining EGL default display.');
   state.display := eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -106,35 +68,104 @@ begin
   if Res <> EGL_TRUE then raise Exception.Create('Failed to choose a display configuration');
   WriteLn('done.');
 
-  {$ifdef NOT_DEFINED}
-  WriteLn('Creating EGL context');
-  state.context := eglCreateContext(state.display, state.config, EGL_NO_CONTEXT, @context_attribs);
-  if state.context = nil then raise Exception.Create('Failed to create EGL context');
-  {$endif}
-
   Write('Binding the OpenGL ES API...');
   Res := eglBindAPI(EGL_OPENGL_ES_API);
   if Res <> EGL_TRUE then raise Exception.Create('Failed to bind OpenGL ES API');
   WriteLn('done.');
+
+  Write('Creating EGL context...');
+  state.context := eglCreateContext(state.display, state.config, EGL_NO_CONTEXT, @context_attribs);
+  if state.context = nil then raise Exception.Create('Failed to create EGL context');
+  WriteLn('done.');
+end;
+
+procedure InitDispmanX(var state: EGL_STATE_T);
+var
+  screen_width, screen_height: UInt32;
+  dispman_element: DISPMANX_ELEMENT_HANDLE_T;
+  dispman_update: DISPMANX_UPDATE_HANDLE_T;
+  success: Int32;
+  src_rect, dst_rect: VC_RECT_T;
+begin
+
+  Write('Initializing BCM host...');
+  BCMHostInit;
+  WriteLn('done.');
+
+  Write('Obtaining LCD display size...');
+  success := BCMHostGraphicsGetDisplaySize(0 {LCD}, screen_width, screen_height);
+  if success < 0 then raise Exception.Create('Failed to obtain LCD display size');
+  WriteLn(screen_width, 'x', screen_height);
+
+  Write('Opening Dispman display...');
+  state.dispman_display := vc_dispmanx_display_open(0 {LCD});
+  if state.dispman_display = 0 then raise Exception.Create('Failed to open dispman display');
+  WriteLn('done.');
+
+  Write('Creating Dispman window from display...');
+  dst_rect.x := 0;
+  dst_rect.y := 0;
+  dst_rect.width  := screen_width;
+  dst_rect.height := screen_height;
+  src_rect.x := 0;
+  src_rect.y := 0;
+  src_rect.width  := screen_width  shl 16;
+  src_rect.height := screen_height shl 16;
+  dispman_update := vc_dispmanx_update_start(0);
+  if dispman_update = 0 then raise Exception.Create('Failed to obtain update handle');
+  dispman_element := vc_dispmanx_element_add(dispman_update, state.dispman_display, 
+    0 {layer}, @src_rect, 0 {source}, @dst_rect, DISPMANX_PROTECTION_NONE, 
+    nil {alpha}, nil {clamp}, 0 {transform});
+  if dispman_element = 0 then raise Exception.Create('Failed to add Dispman element');
+  state.native_window.element := dispman_element;
+  state.native_window.width  := screen_width;
+  state.native_window.height := screen_height;
+  WriteLn('done.');
+end;
+
+procedure EGLFromDispmanX(var state: EGL_STATE_T);
+var
+  Res: EGLboolean;
+begin
+
+  Write('Creating a Surface for the native Window...');
+  state.surface := eglCreateWindowSurface(state.display, state.config, @state.native_window, nil);
+  if state.surface = EGL_NO_SURFACE then raise Exception.Create('Failed to create Window Surface');
+  WriteLn('done.');
+
+  Write('Connecting the rendering context to the surface...');
+  Res := eglMakeCurrent(state.display, state.surface, state.surface, state.context);
+  if Res = EGL_FALSE then raise Exception.Create('Failed to connect the rendering context to the Surface');
+  WriteLn('done.');
 end;
 
 var
-  dispmanx_state: DISPMANX_STATE_T;
   egl_state: EGL_STATE_T;
 
 begin
   try
     
+    WriteLn;
     WriteLn('Initializing DispmanX');
-    InitDispmanX(dispmanx_state);
+    InitDispmanX(egl_state);
 
+    WriteLn;
     WriteLn('Initializing EGL');
     InitEGL(egl_state);
 
+    WriteLn;
+    WriteLn('Connecting EGL to DispmanX');
+    EGLFromDispmanX(egl_state);
 
 
-    if vc_dispmanx_display_close(dispmanx_state.dispman_display) <> 0 then
+    Sleep(1000);
+
+    WriteLn;
+    WriteLn('Cleanup');
+    Write('Closing the Dispman display...');
+    if vc_dispmanx_display_close(egl_state.dispman_display) <> 0 then
       raise Exception.Create('Error closing the DispmanX display');
+    WriteLn('done.');
 
   except on E: Exception do 
     WriteLn(StdErr, 'Error: ', E.Message);
