@@ -139,6 +139,36 @@ begin
   WriteLn('done.');
 end;
 
+procedure Cleanup(var state: EGL_STATE_T);
+var
+  Res: EGLboolean;
+begin
+    if state.surface <> EGL_NO_SURFACE then
+    begin
+      Res := eglDestroySurface(state.display, state.surface);
+      if Res <> EGL_TRUE then WriteLn(StdErr, 'Failed to destroy EGL surface');
+      state.surface := EGL_NO_SURFACE;
+    end;
+    if state.context <> EGL_NO_CONTEXT then
+    begin
+      Res := eglDestroyContext(state.display, state.context);
+      if Res <> EGL_TRUE then WriteLn(StdErr, 'Failed to destroy EGL rendering context');
+      state.context := EGL_NO_CONTEXT;
+    end;
+    if state.display <> EGL_NO_DISPLAY then
+    begin
+      Res := eglTerminate(state.display);
+      if Res <> EGL_TRUE then WriteLn(StdErr, 'Failed to terminate the EGL display');
+      state.display := EGL_NO_DISPLAY;
+    end;
+    if eglReleaseThread <> EGL_TRUE then WriteLn(StdErr, 'Error releasing EGL thread resources');
+    if state.dispman_display <> 0 then
+    begin
+      if vc_dispmanx_display_close(state.dispman_display) <> 0 then
+        WriteLn(StdErr, 'Error closing the DispmanX display');
+    end;
+end;
+
 var
   egl_state: EGL_STATE_T;
 
@@ -162,10 +192,7 @@ begin
 
     WriteLn;
     WriteLn('Cleanup');
-    Write('Closing the Dispman display...');
-    if vc_dispmanx_display_close(egl_state.dispman_display) <> 0 then
-      raise Exception.Create('Error closing the DispmanX display');
-    WriteLn('done.');
+    Cleanup(egl_state);
 
   except on E: Exception do 
     WriteLn(StdErr, 'Error: ', E.Message);
